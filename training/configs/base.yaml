@@ -1,0 +1,60 @@
+data:
+  root_dir: data/processed/unified_dataset_roi_v1
+  train_split: train
+  val_split: val
+  class_names:
+    - normal
+    - eye_closed
+    - yawn
+    - distracted
+  allowed_extensions:
+    - .jpg
+    - .jpeg
+    - .png
+    - .bmp
+    - .webp
+
+input:
+  image_size: 224
+  mean: [0.485, 0.456, 0.406]
+  std: [0.229, 0.224, 0.225]
+  train_augmentation:
+    horizontal_flip: 0.5
+    color_jitter:
+      brightness: 0.2
+      contrast: 0.2
+      saturation: 0.15
+      hue: 0.02
+    rotation_degrees: 8
+
+model:
+  name: mobilenet_v3_small
+  pretrained: true
+  dropout: 0.3
+  freeze_backbone: false
+
+train:
+  epochs: 12
+  batch_size: 32
+  num_workers: 0
+  learning_rate: 0.0005
+  weight_decay: 0.0005
+  seed: 42
+  device: auto
+  save_best_by: macro_f1
+  log_interval: 10
+  early_stopping_patience: 4
+  lr_scheduler:
+    enabled: true
+    mode: max
+    factor: 0.5
+    patience: 2
+    min_lr: 0.000001
+
+eval:
+  batch_size: 32
+  num_workers: 0
+
+output:
+  root_dir: training/outputs
+  run_name: mobilenetv3_baseline

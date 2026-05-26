@@ -1,0 +1,71 @@
+dataset:
+  output_root: data/processed/unified_dataset
+  classes:
+    - normal
+    - eye_closed
+    - yawn
+    - distracted
+  allowed_extensions:
+    - .jpg
+    - .jpeg
+    - .png
+    - .bmp
+    - .webp
+  val_ratio: 0.2
+  seed: 42
+  default_label: null
+
+sources:
+  - name: eye_state_dataset
+    input_root: data/raw/eye_state_dataset
+    recursive: true
+    exclude_if_contains:
+      - mask
+      - sunglasses
+    mappings:
+      - match_any:
+          - /open/
+          - /alert/
+          - /normal/
+          - awake
+        to: normal
+      - match_any:
+          - /closed/
+          - /sleep/
+          - drowsy
+          - tired
+        to: eye_closed
+
+  - name: yawn_dataset
+    input_root: data/raw/yawn_dataset
+    recursive: true
+    mappings:
+      - match_any:
+          - /yawn/
+          - yawning
+          - mouth_open
+        to: yawn
+      - match_any:
+          - /normal/
+          - /non_yawn/
+          - closed_mouth
+        to: normal
+
+  - name: distraction_dataset
+    input_root: data/raw/distraction_dataset
+    recursive: true
+    mappings:
+      - match_any:
+          - phone
+          - smoking
+          - drinking
+          - looking_side
+          - distracted
+          - talking
+        to: distracted
+      - match_any:
+          - safe_driving
+          - forward
+          - attentive
+          - normal
+        to: normal

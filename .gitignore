@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+
+# IDE & Tools
+.playwright-mcp/
+.vscode/
+.idea/
+
+# Outputs & Logs
+outputs/
+runtime_logs/
+*.log
+
+# Training artifacts (too large for GitHub)
+training/outputs/
+data/
+
+# Environment
+.env
+.conda/
+
+# OS
+Thumbs.db
+.DS_Store
+*.tmp

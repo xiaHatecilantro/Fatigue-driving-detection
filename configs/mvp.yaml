@@ -1,0 +1,94 @@
+window_name: "Driver Fatigue & Distraction MVP"
+
+camera:
+  index: 0
+  width: 640
+  height: 480
+
+mediapipe:
+  max_num_faces: 1
+  refine_landmarks: true
+  min_detection_confidence: 0.35
+  min_tracking_confidence: 0.35
+
+landmarks:
+  left_eye: [33, 160, 158, 133, 153, 144]
+  right_eye: [362, 385, 387, 263, 373, 380]
+  mouth: [61, 13, 14, 291]
+  pose_points:
+    nose_tip: 1
+    chin: 152
+    forehead: 10
+    left_face: 234
+    right_face: 454
+
+thresholds:
+  ear_closed: 0.22
+  mar_yawn: 0.60
+
+head_pose:
+  yaw_turn_threshold: 18.0
+  pitch_down_threshold: 10.0
+  yaw_scale: 35.0
+  pitch_scale: 80.0
+  pitch_center_ratio: 0.38
+  roll_scale: 45.0
+
+temporal:
+  eye_closed_frames: 3
+  yawn_frames: 8
+  head_turn_frames: 8
+  head_down_frames: 8
+
+risk:
+  alarm_threshold: 60.0
+  level_thresholds:
+    mild: 30.0
+    moderate: 60.0
+    severe: 80.0
+  weights:
+    missing_face_penalty: 10.0
+    eye_closed_base: 35.0
+    eye_closed_step: 5.0
+    eye_closed_max_boost: 35.0
+    yawn_base: 20.0
+    yawn_step: 3.0
+    yawn_max_boost: 20.0
+    head_turn_base: 30.0
+    head_turn_step: 4.0
+    head_turn_max_boost: 25.0
+    head_down_base: 18.0
+    head_down_step: 3.0
+    head_down_max_boost: 20.0
+    head_down_fatigue_ratio: 0.5
+    eye_low_penalty: 8.0
+    mouth_open_penalty: 5.0
+
+ui:
+  show_landmarks: true
+  show_alarm: true
+
+fusion:
+  weights:
+    rule_weight: 0.4
+    model_weight: 0.6
+  # 图片模式权重（无时序信息，模型更可信）
+  image_weights:
+    rule_weight: 0.2
+    model_weight: 0.8
+  model_thresholds:
+    eye_closed_support: 0.65
+    yawn_support: 0.60
+    distracted_support: 0.70
+    normal_override_threshold: 0.80
+  model_score_mapping:
+    eye_closed_multiplier: 100.0
+    yawn_multiplier: 85.0
+    distracted_multiplier: 100.0
+  risk_thresholds:
+    mild: 30.0
+    moderate: 60.0
+    severe: 80.0
+  alerts:
+    fatigue_warning_threshold: 60.0
+    distraction_warning_threshold: 60.0
