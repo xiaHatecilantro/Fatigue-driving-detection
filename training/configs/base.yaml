@@ -1,3 +1,7 @@
+# DEPRECATED: This config was for MobileNetV3 baseline training.
+# Use training/configs/yolo.yaml for YOLO11 classification training.
+# Kept for reference only.
+
 data:
   root_dir: data/processed/unified_dataset_roi_v1
   train_split: train

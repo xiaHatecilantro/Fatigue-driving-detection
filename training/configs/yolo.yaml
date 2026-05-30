@@ -1,0 +1,46 @@
+# YOLO11 classification training config for driver fatigue detection.
+# Mapped from the original MobileNetV3 baseline (base.yaml).
+
+data: data/processed/unified_dataset_roi_v1
+
+model:
+  name: yolo11m-cls
+  pretrained: true
+
+train:
+  epochs: 12
+  imgsz: 224
+  batch: 32
+  workers: 0
+  lr0: 0.0005
+  weight_decay: 0.0005
+  seed: 42
+  device: auto
+  save: true
+  optimizer: AdamW
+  patience: 4
+  warmup_epochs: 1
+  cos_lr: false
+
+  # Augmentation (mapped from base.yaml's train_augmentation)
+  hsv_h: 0.015
+  hsv_s: 0.7
+  hsv_v: 0.4
+  degrees: 8.0
+  fliplr: 0.5
+  translate: 0.0
+  scale: 0.0
+  shear: 0.0
+  perspective: 0.0
+  flipud: 0.0
+  mosaic: 0.0
+  mixup: 0.0
+  copy_paste: 0.0
+
+eval:
+  batch: 32
+  workers: 0
+
+output:
+  root_dir: training/outputs
+  run_name: yolo11m_baseline

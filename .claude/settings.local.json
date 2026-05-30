@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /s /b \"D:\\\\疲劳驾驶检测\")",
+      "Bash(pip list *)",
+      "WebSearch",
+      "Bash(npx skills *)",
+      "Bash(mkdir -p \"C:\\\\Users\\\\Xia chuan can\\\\.claude\\\\skills\\\\find-skills\")",
+      "Bash(cp \"C:\\\\Users\\\\Xia chuan can\\\\.codex\\\\skills\\\\find-skills\\\\find-skills\\\\SKILL.md\" \"C:\\\\Users\\\\Xia chuan can\\\\.claude\\\\skills\\\\find-skills\\\\SKILL.md\")"
+    ]
+  }
+}

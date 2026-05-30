@@ -21,7 +21,9 @@ runtime_logs/
 
 # Training artifacts (too large for GitHub)
 training/outputs/
+runs/
 data/
+yolo*.pt
 
 # Environment
 .env

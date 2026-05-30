@@ -34,8 +34,8 @@ class InferenceService:
     def __init__(
         self,
         config_path: str | Path = "configs/mvp.yaml",
-        model_checkpoint_path: str | Path = "training/outputs/mobilenetv3_baseline/checkpoints/best.pt",
-        model_config_path: str | Path = "training/configs/base.yaml",
+        model_checkpoint_path: str | Path = "runs/classify/training/outputs/yolo11m_baseline/weights/best.pt",
+        model_config_path: str | Path = "training/configs/yolo.yaml",
     ) -> None:
         """Store config paths, output roots, and initialize reusable model fusion components."""
         self.config_path = Path(config_path)
