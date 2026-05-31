@@ -15,7 +15,7 @@ class MetricsService:
 
     def __init__(
         self,
-        run_root: str | Path = "runs/classify/training/outputs/yolo11m_baseline",
+        run_root: str | Path = "runs/classify/training/outputs/yolo11m_newdata_baseline",
         model_name: str = "YOLO11m-cls",
     ) -> None:
         """Store artifact locations."""

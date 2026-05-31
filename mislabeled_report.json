@@ -1,0 +1,38 @@
+[
+  {
+    "file": "data\\processed\\unified_dataset_roi_v1\\train\\normal\\statefarm_normal_img_14365_000280.jpg",
+    "label": "normal",
+    "predicted": "distracted",
+    "confidence": 0.8765
+  },
+  {
+    "file": "data\\processed\\unified_dataset_roi_v1\\train\\normal\\statefarm_normal_img_18802_000047.jpg",
+    "label": "normal",
+    "predicted": "distracted",
+    "confidence": 0.8492
+  },
+  {
+    "file": "data\\processed\\unified_dataset_roi_v1\\train\\normal\\statefarm_normal_img_20310_000056.jpg",
+    "label": "normal",
+    "predicted": "distracted",
+    "confidence": 0.8398
+  },
+  {
+    "file": "data\\processed\\unified_dataset_roi_v1\\train\\normal\\statefarm_normal_img_22750_000001.jpg",
+    "label": "normal",
+    "predicted": "distracted",
+    "confidence": 0.9346
+  },
+  {
+    "file": "data\\processed\\unified_dataset_roi_v1\\train\\distracted\\statefarm_distracted_img_13428_000247.jpg",
+    "label": "distracted",
+    "predicted": "normal",
+    "confidence": 0.8417
+  },
+  {
+    "file": "data\\processed\\unified_dataset_roi_v1\\train\\distracted\\statefarm_distracted_img_16677_000353.jpg",
+    "label": "distracted",
+    "predicted": "normal",
+    "confidence": 0.8593
+  }
+]

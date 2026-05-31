@@ -1,94 +1,85 @@
 # 驾驶员疲劳与分心检测系统
 
-融合**传统视觉规则**和**深度学习模型**的驾驶员状态检测全栈系统。通过 MediaPipe 提取人脸关键点计算 EAR/MAR/头部姿态进行时序打分，同时用 MobileNetV3 分类器进行视觉判断，最终由融合引擎综合两者的输出。
+融合**传统视觉规则**（MediaPipe 人脸关键点 + EAR/MAR/头部姿态时序打分）和 **YOLO11m-cls 深度学习模型**的驾驶员状态检测全栈系统。
 
-## 技术栈
+## 项目概况
 
-| 层 | 技术 |
-|---|------|
-| 前端 | React + TypeScript + Vite |
-| 后端 | FastAPI + Pydantic |
-| 计算机视觉 | MediaPipe Face Mesh + OpenCV |
-| 深度学习 | PyTorch + MobileNetV3-Small + torchvision |
-| 配置 | YAML |
-
-## 项目结构
-
-```
-├── backend/           # FastAPI 后端服务
-│   ├── api/routes/    # HTTP 路由层（health / infer / metrics / ws）
-│   ├── services/      # 业务编排层（推理服务 + 训练指标服务）
-│   └── schemas/       # Pydantic 数据模型
-├── configs/           # YAML 配置文件（阈值、权重、摄像头参数）
-├── cv/                # 传统视觉特征提取与规则打分
-│   ├── features/      # EAR / MAR / 头部姿态计算
-│   └── scoring/       # 规则法打分器（时序逻辑 + 风险累加）
-├── inference/         # 统一推理管线与融合引擎
-│   ├── common_pipeline.py   # 单帧推理总控
-│   ├── fusion_engine.py     # 规则 + 模型融合
-│   ├── model_runner.py      # MobileNetV3 推理封装
-│   ├── image_infer.py       # 离线图片推理入口
-│   ├── video_infer.py       # 离线视频推理入口
-│   └── realtime_detector.py # 摄像头实时检测
-├── training/          # 分类模型训练与评估
-│   ├── configs/       # 训练配置 + 数据集映射规则
-│   ├── datasets/      # PyTorch Dataset
-│   └── models/        # MobileNetV3 模型定义
-├── frontend/          # React 前端
-│   └── src/
-│       ├── components/  # UploadPanel / ResultCard / TrainingMetricsPanel / RealtimePanel
-│       ├── services/    # HTTP 请求封装（fetch API）
-│       ├── types/       # TypeScript 类型定义
-│       └── hooks/       # WebSocket 自定义 Hook
-├── scripts/           # 数据处理脚本
-└── tests/             # 测试
-```
+| 项目 | 说明 |
+|------|------|
+| 检测对象 | 驾驶员疲劳（闭眼/哈欠）与分心（低头/转头） |
+| 检测方式 | 规则法（EAR/MAR/头部姿态时序打分）+ 模型法（YOLO11m 四分类）融合 |
+| 模型 | YOLO11m-cls，10.4M 参数，94.3% 准确率 |
+| 数据 | 9751 张人工标注全景驾驶图像（Yi Li et al., IEEE ITSC 2025） |
+| 技术栈 | FastAPI + React + TypeScript + MediaPipe + ultralytics + PyTorch |
 
 ## 核心设计
 
-### 规则 + 模型双引擎融合
+### 双引擎融合架构
 
 ```
 摄像头画面
-    ├─→ MediaPipe → 468点关键点 → EAR/MAR/头部角度 → 规则打分（70%）──┐
-    │                                                                   ├─→ 融合决策
-    └─→ MobileNetV3（分类器） → 4类概率 → 模型打分（30%）────────────┘
+    ├─→ MediaPipe → 468点人脸关键点 → EAR/MAR/头部角度 → 规则打分 ──┐
+    │                                                                  ├─→ 融合决策
+    └─→ YOLO11m-cls → 4类概率 → 模型打分 ──────────────────────────┘
 ```
 
-- **规则法**：计算眼睛宽高比（EAR）、嘴巴宽高比（MAR）、头部偏转角（yaw/pitch/roll），通过连续帧计数过滤偶发噪声，累加减分
-- **模型法**：MobileNetV3-Small 四分类器（normal / eye_closed / yawn / distracted），输出各类概率
-- **融合引擎**：结合两者结果，规则为主（稳定可解释），模型为辅（补充视觉模式），支持图片/视频/实时三种模式自适应权重
+- **规则法**：计算眼睛宽高比（EAR）、嘴巴宽高比（MAR）、头部偏转角（yaw/pitch/roll），连续帧过滤偶发噪声，累加评分
+- **模型法**：YOLO11m 四分类器（normal / eye_closed / yawn / distracted），支持全景图直接推理
+- **融合引擎**：图片模式模型优先（80%权重），视频模式规则保留话语权（40%），按场景自适应
 
 ### 风险等级
 
 | 等级 | 分数范围 | 说明 |
 |------|---------|------|
 | normal | 0-30 | 正常驾驶 |
-| mild | 30-60 | 轻度风险 |
-| moderate | 60-80 | 中度风险 |
-| severe | 80-100 | 重度风险 |
+| mild | 30-60 | 轻度风险，提醒注意 |
+| moderate | 60-80 | 中度风险，建议休息 |
+| severe | 80-100 | 重度风险，告警 |
+
+## 项目结构
+
+```
+├── backend/              # FastAPI 后端
+│   ├── api/routes/       # HTTP 路由（health / infer / metrics / ws）
+│   ├── services/         # 业务编排（推理服务 + 训练指标服务）
+│   └── schemas/          # Pydantic 数据模型
+├── configs/              # 运行配置（融合权重、阈值、摄像头参数）
+├── cv/                   # 传统视觉（EAR/MAR/头部姿态 + 规则打分）
+├── inference/            # 推理管线 + 融合引擎 + 模型运行器
+├── training/             # 训练入口 + 配置
+│   └── configs/          # YOLO11 / MobileNetV3（废弃）训练配置
+├── frontend/             # React 前端
+│   └── src/
+│       ├── components/   # UploadPanel / ResultCard / TrainingMetricsPanel / RealtimePanel
+│       ├── services/     # HTTP 请求封装（fetch）
+│       └── types/        # TypeScript 类型定义
+├── scripts/              # 数据处理脚本
+├── tests/                # 测试
+└── requirements.txt      # Python 依赖清单
+```
 
 ## 快速开始
 
 ### 环境要求
 
-- Python 3.10 ~ 3.11（推荐 conda 环境）
+- Python 3.11（推荐 conda）
 - Node.js 18+
+- NVIDIA GPU（可选，CPU 也可运行）
 - 摄像头（实时模式需要）
 
-### 1. 安装后端依赖
+### 1. 安装依赖
 
 ```bash
 conda create -n driving python=3.11
 conda activate driving
-pip install fastapi uvicorn mediapipe==0.10.9 opencv-python pyyaml pydantic torch torchvision numpy pillow python-multipart
+pip install -r requirements.txt
 ```
 
-### 2. 安装前端依赖
+### 2. 确保模型权重存在
 
 ```bash
-cd frontend
-npm install
+# 训练好的模型应位于：
+ls runs/classify/training/outputs/yolo11m_newdata_baseline/weights/best.pt
 ```
 
 ### 3. 启动后端
@@ -97,98 +88,121 @@ npm install
 uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-访问 `http://127.0.0.1:8000/docs` 查看交互式 API 文档。
+API 文档：`http://127.0.0.1:8000/docs`
 
 ### 4. 启动前端
 
 ```bash
 cd frontend
+npm install
 npm run dev
 ```
 
-浏览器打开 `http://localhost:5173`。
+打开 `http://localhost:5173`
 
 ## API 接口
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/` | 根路径 |
 | GET | `/health` | 健康检查 |
-| POST | `/api/infer/image` | 上传图片，返回疲劳/分心检测结果 |
-| POST | `/api/infer/video` | 上传视频，返回逐帧结果 + 事件列表 + 汇总 |
-| GET | `/api/metrics/training` | 获取模型训练指标和混淆矩阵 |
+| POST | `/api/infer/image` | 图片疲劳/分心检测 |
+| POST | `/api/infer/video` | 视频逐帧检测 + 事件列表 |
+| GET | `/api/metrics/training` | 模型训练指标和混淆矩阵 |
 | WS | `/ws/realtime` | WebSocket 实时摄像头检测 |
 
 ## 模型训练
 
-### 数据集
+### 当前模型
 
-训练数据按类别目录组织：
-
-```
-data/processed/unified_dataset/
-├── train/
-│   ├── normal/
-│   ├── eye_closed/
-│   ├── yawn/
-│   └── distracted/
-└── val/
-    └── ...
-```
+| 指标 | 值 |
+|------|------|
+| 架构 | YOLO11m-cls |
+| 参数 | 10.4M |
+| 训练数据 | 9751 张全景图（Yi Li et al., IEEE ITSC 2025） |
+| 类别 | normal / eye_closed / yawn / distracted |
+| 准确率 | 94.3% |
+| 训练环境 | NVIDIA RTX 4060, 15 epoch, ~40 分钟 |
 
 ### 训练命令
 
 ```bash
-python -m training.train_classifier --config training/configs/base.yaml
+# 四分类全图训练
+python training/train_classifier.py --config training/configs/yolo_newdata.yaml
 ```
 
-### 评估命令
+### 导出模型
 
 ```bash
-python -m training.eval_classifier --config training/configs/base.yaml --checkpoint path/to/best.pt
+# 一行命令导出到 ONNX
+yolo export model=runs/classify/training/outputs/yolo11m_newdata_baseline/weights/best.pt format=onnx
+
+# 支持的导出格式：
+# torchscript, onnx, openvino, tensorrt, coreml, tflite, ncnn
 ```
 
-### 当前模型指标
+### 独立部署
 
-| 指标 | 值 |
-|------|------|
-| 准确率 | 97.80% |
-| 宏平均 F1 | 97.92% |
-| 闭眼 F1 | 99.50% |
-| 哈欠 F1 | 99.50% |
-| 分心 F1 | 95.38% |
+`best.pt` 是自包含文件，只需要 `ultralytics` + `torch`，不依赖本项目任何代码：
+
+```python
+from ultralytics import YOLO
+model = YOLO("best.pt")
+result = model("任意图片.jpg")
+print(result[0].probs)  # 四类概率
+```
 
 ## 配置说明
 
-核心阈值和权重集中在 `configs/mvp.yaml`：
+核心参数在 `configs/mvp.yaml`：
 
 ```yaml
+# 规则法
 thresholds:
   ear_closed: 0.22      # 低于此值判定闭眼
-  mar_yawn: 0.60        # 高于此值判定张嘴（哈欠）
+  mar_yawn: 0.60        # 高于此值判定哈欠
 
+# 时序过滤（防误报）
 temporal:
-  eye_closed_frames: 3  # 连续闭眼≥3帧才触发
-  yawn_frames: 8        # 连续张嘴≥8帧才触发
+  eye_closed_frames: 3  # 连续闭眼 ≥ 3 帧才触发
+  yawn_frames: 8        # 连续张嘴 ≥ 8 帧才判定
 
+# 融合权重
 fusion:
-  weights:
-    rule_weight: 0.4    # 规则法权重
-    model_weight: 0.6   # 模型法权重
-  image_weights:        # 图片模式专用权重（无时序信息）
+  weights:              # 视频/实时模式
+    rule_weight: 0.4
+    model_weight: 0.6
+  image_weights:        # 图片模式（无时序，模型优先）
     rule_weight: 0.2
     model_weight: 0.8
 ```
 
-## 注意事项
+## 更新日志
 
-- **MediaPipe 版本**：项目使用 `mediapipe==0.10.9`，更高版本已移除 `solutions` API，会导致不兼容
-- **Python 版本**：建议 3.11，3.12+ 可能存在兼容性问题
-- **模型权重**：推理需要 `training/outputs/` 下的 checkpoint 文件，若不存在系统会降级为纯规则模式
-- **数据集**：源码仓库不包含训练数据和模型权重文件，需自行准备或训练
+### 2026-05 — 模型升级与数据集替换
+
+- 分类模型 MobileNetV3 → YOLO11m-cls
+- 数据集从 2000 张关键词归类图 → 9751 张人工标注全景图
+- 发现并确认旧数据集 yawn 类存在系统性标注错误
+- 支持全景图直接推理，模型可独立部署
+- 融合引擎新增图片/视频模式自适应权重
+- 完善依赖清单（requirements.txt）
+
+### 2026-04 — 项目初始化
+
+- 规则法（EAR/MAR/Head Pose）+ 模型法（MobileNetV3）双引擎融合
+- FastAPI + React 前后端完整链路
+- 摄像头实时 WebSocket 检测
 
 ## 适用场景
 
-- 学习"AI 模型如何嵌入完整应用"的教学演示
-- 驾驶员状态监测原型验证
-- 计算机视觉 + Web 全栈开发参考
+- AI 视觉应用竞赛 / 课设 / 毕设
+- 学习"AI 模型全栈落地的完整流程"
+- 驾驶员状态监测原型参考
+- 计算机视觉 + Web 全栈开发教学
+
+## 参考引用
+
+- 数据集：Yi Li et al., "A Comparative Study of Fatigue Detection Models Based on Temporal Feature Fusion," IEEE ITSC, 2025
+- 人脸关键点：MediaPipe Face Mesh（Google）
+- 分类模型：YOLO11-cls（Ultralytics）
+- EAR 公式：Soukupová & Čech, "Real-Time Eye Blink Detection using Facial Landmarks," CVPR 2016
