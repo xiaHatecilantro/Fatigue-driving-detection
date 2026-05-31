@@ -23,6 +23,7 @@ runtime_logs/
 training/outputs/
 runs/
 data/
+archive/
 yolo*.pt
 
 # Environment
