@@ -9,14 +9,18 @@ from typing import Any, Mapping
 
 DEFAULT_FUSION_CONFIG: dict[str, Any] = {
     "weights": {
-        "rule_weight": 0.7,
-        "model_weight": 0.3,
+        "rule_weight": 0.4,
+        "model_weight": 0.6,
+    },
+    "image_weights": {
+        "rule_weight": 0.2,
+        "model_weight": 0.8,
     },
     "model_thresholds": {
-        "eye_closed_support": 0.80,
-        "yawn_support": 0.65,
-        "distracted_support": 0.75,
-        "normal_override_threshold": 0.90,
+        "eye_closed_support": 0.65,
+        "yawn_support": 0.60,
+        "distracted_support": 0.70,
+        "normal_override_threshold": 0.80,
     },
     "model_score_mapping": {
         "eye_closed_multiplier": 100.0,
