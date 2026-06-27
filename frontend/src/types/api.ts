@@ -70,6 +70,7 @@ export interface RealtimeSocketResponse {
   frame_id?: number;
   message?: string;
   result?: UnifiedInferenceResult;
+  annotated_image?: string;
 }
 
 export interface TrainingMetrics {

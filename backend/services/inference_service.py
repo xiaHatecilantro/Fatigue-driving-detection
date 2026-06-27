@@ -78,6 +78,7 @@ class InferenceService:
             )
             visualization_path = None
             if save_visualization and frame_result.annotated_frame is not None:
+                self._draw_yolo_overlay(frame_result.annotated_frame, fused_result, frame_result)
                 visualization_path = self._build_output_path("images", input_path.suffix or ".jpg")
                 cv2.imwrite(str(visualization_path), frame_result.annotated_frame)
 
@@ -148,6 +149,7 @@ class InferenceService:
 
                         if writer is not None:
                             annotated = frame_result.annotated_frame if frame_result.annotated_frame is not None else frame
+                            self._draw_yolo_overlay(annotated, fused, frame_result)
                             writer.write(annotated)
                     except Exception:
                         failed_frames += 1
@@ -207,18 +209,26 @@ class InferenceService:
         frame = self._decode_frame_payload(payload)
         frame_id = int(payload.get("frame_id", 0))
         timestamp = payload.get("timestamp")
+        draw_overlay = bool(payload.get("draw_overlay", True))
         frame_result = pipeline.process_frame(
             frame,
             frame_id=frame_id,
             timestamp=timestamp,
-            draw_overlay=False,
+            draw_overlay=draw_overlay,
         )
-        fused_result = self._fuse_frame_result(frame_result, frame=frame, mode="realtime")
-        return {
+        fused_result = self._fuse_frame_result(
+            frame_result, frame=frame, allow_full_frame_fallback=True, mode="realtime"
+        )
+        response: dict[str, Any] = {
             "status": "success",
             "frame_id": frame_id,
             "result": fused_result.model_dump(),
         }
+        if draw_overlay and frame_result.annotated_frame is not None:
+            self._draw_yolo_overlay(frame_result.annotated_frame, fused_result, frame_result)
+            _, buffer = cv2.imencode(".jpg", frame_result.annotated_frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            response["annotated_image"] = base64.b64encode(buffer).decode("utf-8")
+        return response
 
     async def _save_upload_file(self, file: UploadFile, destination: Path) -> None:
         """Persist an uploaded file to a local path."""
@@ -372,6 +382,31 @@ class InferenceService:
             model_result=model_summary,
             fusion_result=fusion_summary,
         )
+
+    @staticmethod
+    def _draw_yolo_overlay(image: Any, fused_result: UnifiedInferenceResult, frame_result: Any) -> None:
+        """Add YOLO-style classification label bar above the face box."""
+        label = fused_result.model_result.predicted_label
+        conf = fused_result.model_result.predicted_confidence
+        if not label:
+            return
+
+        label_map = {"normal": "Normal", "eye_closed": "Eyes Closed", "yawn": "Yawning", "distracted": "Distracted"}
+        text = f"{label_map.get(label, label)} {conf * 100:.1f}%"
+
+        bbox = getattr(frame_result, "face_bbox", None)
+        (tw, th), baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 2)
+
+        if bbox is not None:
+            x1, y1 = int(bbox[0]), int(bbox[1])
+            bar_y1 = max(0, y1 - th - baseline - 6)
+            bar_y2 = y1
+        else:
+            # No face bbox — draw label at top-left
+            x1, bar_y1, bar_y2 = 8, 8, 8 + th + baseline + 6
+
+        cv2.rectangle(image, (x1, bar_y1), (x1 + tw + 8, bar_y2), (0, 255, 0), -1)
+        cv2.putText(image, text, (x1 + 4, bar_y1 + th + 3), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 0, 0), 2, cv2.LINE_AA)
 
     def _extract_model_roi(self, frame: Any, frame_result: Any) -> Any | None:
         """Prefer a face ROI for classifier inference and skip when no valid face exists."""

@@ -403,6 +403,382 @@ input {
   margin-bottom: 16px;
 }
 
+/* ===== 摄像头拍照推理布局 ===== */
+
+.camera-shell {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 20px;
+  height: calc(100vh - 240px);
+  min-height: 600px;
+}
+
+.camera-left {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.camera-video-box {
+  position: relative;
+  flex: 1;
+  background: #111827;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(30, 57, 90, 0.12);
+  box-shadow: 0 20px 40px rgba(25, 50, 90, 0.1);
+}
+
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.camera-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.7);
+  font-size: 16px;
+}
+
+.camera-error {
+  color: #ffb8b8;
+}
+
+.camera-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.capture-btn {
+  padding: 16px 64px;
+  font-size: 18px;
+  font-weight: 600;
+  border-radius: 16px;
+}
+
+/* ===== 右栏：已识别图片列表 ===== */
+
+.camera-right {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.capture-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.clear-btn {
+  padding: 4px 14px;
+  border-radius: 8px;
+  border: 1px solid #d0d8e8;
+  background: #fff;
+  color: #7080a0;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.clear-btn:hover {
+  background: #fff0f0;
+  color: #c02020;
+  border-color: #f0b8b8;
+}
+
+.capture-list-title {
+  margin: 0 0 12px;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.capture-count {
+  font-size: 13px;
+  font-weight: 400;
+  color: #fff;
+  background: #2d7ff9;
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+.capture-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 4px;
+}
+
+.capture-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 2px solid rgba(30, 57, 90, 0.08);
+  cursor: pointer;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.capture-card:hover {
+  border-color: #2d7ff9;
+  box-shadow: 0 4px 16px rgba(45, 127, 249, 0.15);
+}
+
+.capture-card--active {
+  border-color: #2d7ff9;
+  box-shadow: 0 4px 16px rgba(45, 127, 249, 0.25);
+}
+
+.capture-thumb-wrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 80px;
+  height: 60px;
+}
+
+.thumb-judge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+
+.thumb-judge--correct {
+  background: #1a8a4a;
+}
+
+.thumb-judge--incorrect {
+  background: #c02020;
+}
+
+.capture-thumb {
+  width: 80px;
+  height: 60px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #eef3fb;
+}
+
+.capture-thumb--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8899b4;
+  font-size: 12px;
+}
+
+.capture-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.risk-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  align-self: flex-start;
+}
+
+.risk-normal {
+  background: #d8f3e8;
+  color: #146148;
+}
+.risk-mild {
+  background: #fff3d4;
+  color: #946800;
+}
+.risk-moderate {
+  background: #ffe4d4;
+  color: #a64216;
+}
+.risk-severe {
+  background: #ffe4e4;
+  color: #a62020;
+}
+
+.capture-time {
+  font-size: 12px;
+  color: #8094b0;
+}
+
+/* ===== 弹窗 ===== */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+.modal-content {
+  position: relative;
+  max-width: 960px;
+  max-height: 90vh;
+  width: 100%;
+  background: #fff;
+  border-radius: 24px;
+  overflow-y: auto;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-close {
+  position: sticky;
+  top: 16px;
+  right: 16px;
+  float: right;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.modal-close:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.modal-image {
+  width: 100%;
+  display: block;
+  border-radius: 0;
+}
+
+.modal-image--empty {
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f0f4f9;
+  color: #8899b4;
+  font-size: 18px;
+}
+
+.modal-result {
+  padding: 20px;
+}
+
+/* ===== 弹窗判断栏 ===== */
+
+.modal-judge-bar {
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-top: 1px solid #eef3fb;
+}
+
+.judge-label {
+  font-size: 14px;
+  color: #506080;
+}
+
+.judge-class {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a3250;
+}
+
+.judge-buttons {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.judge-btn {
+  padding: 8px 20px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.judge-correct {
+  background: #e6f7ec;
+  color: #146148;
+  border-color: #a3e4be;
+}
+
+.judge-correct:hover {
+  background: #b8edd0;
+}
+
+.judge-correct.judge-btn--active {
+  background: #146148;
+  color: #fff;
+  border-color: #146148;
+}
+
+.judge-incorrect {
+  background: #ffe8e8;
+  color: #a62020;
+  border-color: #f0b8b8;
+}
+
+.judge-incorrect:hover {
+  background: #fcd0d0;
+}
+
+.judge-incorrect.judge-btn--active {
+  background: #a62020;
+  color: #fff;
+  border-color: #a62020;
+}
+
+.judge-done {
+  width: 100%;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #506080;
+  padding-top: 4px;
+}
+
 @media (max-width: 1080px) {
   .hero {
     flex-direction: column;
@@ -410,6 +786,15 @@ input {
 
   .main-grid {
     grid-template-columns: 1fr;
+  }
+
+  .camera-shell {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .camera-left {
+    height: 50vh;
   }
 }
 

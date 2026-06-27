@@ -90,6 +90,7 @@ class CommonInferencePipeline:
         self.landmark_config = config["landmarks"]
         self.ui_config = config.get("ui", {})
         self.face_mesh = self._create_face_mesh(config.get("mediapipe", {}))
+        self._fallback_cascade: Any = None  # lazy-loaded Haar cascade for masked-face fallback
 
     def _create_face_mesh(self, mediapipe_config: Mapping[str, Any]) -> Any:
         """Create MediaPipe Face Mesh or return None when unavailable."""
@@ -98,7 +99,7 @@ class CommonInferencePipeline:
         return mp.solutions.face_mesh.FaceMesh(
             static_image_mode=self.static_image_mode,
             max_num_faces=int(mediapipe_config.get("max_num_faces", 1)),
-            refine_landmarks=bool(mediapipe_config.get("refine_landmarks", False)),
+            refine_landmarks=False,
             min_detection_confidence=float(mediapipe_config.get("min_detection_confidence", 0.5)),
             min_tracking_confidence=float(mediapipe_config.get("min_tracking_confidence", 0.5)),
         )
@@ -118,6 +119,33 @@ class CommonInferencePipeline:
         """Run full rule-based inference on a single frame with tolerance for failure."""
         landmarks = self._extract_landmarks(frame)
         if not landmarks:
+            # Try Haar cascade fallback for masked faces
+            fallback_bbox = self._fallback_detect_face(frame)
+            if fallback_bbox is not None:
+                # Face detected by fallback — set partial result without landmarks
+                self.temporal_state.missing_face_frames = 0
+                result = FrameInferenceResult(
+                    frame_id=frame_id,
+                    timestamp=timestamp,
+                    face_detected=True,
+                    face_bbox=fallback_bbox,
+                    landmarks=[],
+                    ear=0.0,
+                    mar=0.0,
+                    yaw=0.0,
+                    pitch=0.0,
+                    roll=0.0,
+                    fatigue_score=0.0,
+                    distraction_score=0.0,
+                    risk_score=0.0,
+                    risk_level="normal",
+                    status_labels=["fallback_face"],
+                    reasons=[],
+                    alarm_on=False,
+                )
+                result.annotated_frame = self._draw_overlay(frame, result) if draw_overlay else None
+                return result
+
             self.temporal_state.missing_face_frames += 1
             self.temporal_state.eye_closed_frames = 0
             self.temporal_state.yawn_frames = 0
@@ -222,6 +250,56 @@ class CommonInferencePipeline:
         ) if draw_overlay else None
         return result
 
+    FALLBACK_CASCADE_FILES = [
+        "haarcascade_frontalface_default.xml",
+        "haarcascade_frontalface_alt2.xml",
+    ]
+    FALLBACK_SCALE_FACTORS = [1.05, 1.1]
+    FALLBACK_MIN_NEIGHBORS = [3, 5]
+
+    def _get_fallback_cascade(self) -> Any:
+        """Lazy-load OpenCV Haar cascade for masked-face fallback."""
+        if self._fallback_cascade is None:
+            self._fallback_cascade = [
+                cv2.CascadeClassifier(cv2.data.haarcascades + name)
+                for name in self.FALLBACK_CASCADE_FILES
+            ]
+        return self._fallback_cascade
+
+    def _fallback_detect_face(self, frame: Any) -> tuple[int, int, int, int] | None:
+        """Try multiple Haar cascade configs when MediaPipe fails (handles masks better)."""
+        try:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            eq = cv2.equalizeHist(gray)  # improve contrast for detection
+            h, w = gray.shape[:2]
+            frame_area = h * w
+            for cascade in self._get_fallback_cascade():
+                if cascade.empty():
+                    continue
+                for scale in self.FALLBACK_SCALE_FACTORS:
+                    for neighbors in self.FALLBACK_MIN_NEIGHBORS:
+                        # Require face to be at least 15% of frame width
+                        min_s = int(w * 0.12)
+                        result = cascade.detectMultiScale(
+                            eq, scaleFactor=scale, minNeighbors=neighbors,
+                            minSize=(min_s, min_s),
+                        )
+                        if len(result) == 0:
+                            # Also try on unequalized image
+                            result = cascade.detectMultiScale(
+                                gray, scaleFactor=scale, minNeighbors=neighbors,
+                                minSize=(min_s, min_s),
+                            )
+                        if len(result) > 0:
+                            # Filter: face must cover < 90% of frame (not the whole image)
+                            best = max(result, key=lambda r: r[2] * r[3])
+                            fx, fy, fw, fh = best
+                            if fw * fh < frame_area * 0.85:
+                                return (int(fx), int(fy), int(fx + fw), int(fy + fh))
+            return None
+        except Exception:
+            return None
+
     def _compute_face_bbox(
         self,
         frame_shape: tuple[int, int],
@@ -290,50 +368,11 @@ class CommonInferencePipeline:
         right_ear: float = 0.0,
         head_pose: HeadPoseResult | None = None,
     ) -> Any:
-        """Render landmarks, scores, and alarm text onto a copy of the frame."""
+        """Draw green face bounding box on a copy of the frame."""
         output = frame.copy()
-
-        if self.ui_config.get("show_landmarks", True):
-            for x_coord, y_coord in result.landmarks:
-                cv2.circle(output, (int(x_coord), int(y_coord)), 1, (0, 255, 0), -1)
-
-        pose = head_pose or HeadPoseResult(result.yaw, result.pitch, result.roll, False, False)
-        lines = [
-            f"EAR: {result.ear:.3f}  L:{left_ear:.3f} R:{right_ear:.3f}",
-            f"MAR: {result.mar:.3f}",
-            f"Yaw/Pitch/Roll: {pose.yaw:.1f}/{pose.pitch:.1f}/{pose.roll:.1f}",
-            f"Fatigue: {result.fatigue_score:.1f}",
-            f"Distraction: {result.distraction_score:.1f}",
-            f"Risk: {result.risk_score:.1f} ({result.risk_level})",
-            f"Status: {', '.join(result.status_labels)}",
-        ]
-        if not result.face_detected:
-            lines.insert(0, "Face: not detected")
-
-        text_color = (0, 255, 0)
-        if result.risk_level == "mild":
-            text_color = (0, 255, 255)
-        elif result.risk_level == "moderate":
-            text_color = (0, 165, 255)
-        elif result.risk_level == "severe":
-            text_color = (0, 0, 255)
-
-        for index, line in enumerate(lines):
-            y_coord = 25 + index * 24
-            cv2.putText(output, line, (12, y_coord), cv2.FONT_HERSHEY_SIMPLEX, 0.65, text_color, 2, cv2.LINE_AA)
-
-        if result.alarm_on and self.ui_config.get("show_alarm", True):
-            cv2.rectangle(output, (0, 0), (output.shape[1] - 1, output.shape[0] - 1), (0, 0, 255), 3)
-            cv2.putText(
-                output,
-                f"ALARM: {result.risk_level.upper()}",
-                (12, output.shape[0] - 20),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.9,
-                (0, 0, 255),
-                3,
-                cv2.LINE_AA,
-            )
+        if result.face_detected and result.face_bbox is not None:
+            x1, y1, x2, y2 = result.face_bbox
+            cv2.rectangle(output, (x1, y1), (x2, y2), (0, 255, 0), 2)
         return output
 
 
