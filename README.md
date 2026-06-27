@@ -62,30 +62,29 @@
 
 ### 环境要求
 
-- Python 3.11（推荐 conda）
+- Python 3.11（推荐 conda，本项目使用 `driving_program` 环境）
 - Node.js 18+
-- NVIDIA GPU（可选，CPU 也可运行）
-- 摄像头（实时模式需要）
+- 摄像头（拍照推理模式需要）
 
 ### 1. 安装依赖
 
 ```bash
-conda create -n driving python=3.11
-conda activate driving
+conda create -n driving_program python=3.11
+conda activate driving_program
 pip install -r requirements.txt
 ```
 
 ### 2. 确保模型权重存在
 
 ```bash
-# 训练好的模型应位于：
 ls runs/classify/training/outputs/yolo11m_newdata_baseline/weights/best.pt
 ```
 
 ### 3. 启动后端
 
 ```bash
-uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
+# 务必先在项目根目录下执行
+uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 API 文档：`http://127.0.0.1:8000/docs`
@@ -99,6 +98,14 @@ npm run dev
 ```
 
 打开 `http://localhost:5173`
+
+### 5. 使用摄像头拍照推理
+
+1. 点击「打开摄像头」授权相机
+2. 对准人脸，点击「拍照」
+3. 右侧栏显示识别结果（缩略图 + 风险等级 + 时间）
+4. 点击缩略图放大查看标注详情，可手动判断模型正误（✓ 正确 / ✗ 错误）
+5. 支持一键清空已拍照列表
 
 ## API 接口
 
