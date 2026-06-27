@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from backend.api.routes.health import router as health_router
 from backend.api.routes.infer import router as infer_router
 from backend.api.routes.metrics import router as metrics_router
+from backend.api.routes.ws import router as ws_router
 
 
 app = FastAPI(
@@ -35,6 +39,11 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(infer_router)
 app.include_router(metrics_router)
+app.include_router(ws_router)
+
+outputs_root = Path("outputs")
+outputs_root.mkdir(parents=True, exist_ok=True)
+app.mount("/outputs", StaticFiles(directory=str(outputs_root)), name="outputs")
 
 
 @app.get("/", tags=["root"], summary="Root endpoint")
